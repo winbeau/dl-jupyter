@@ -99,9 +99,11 @@ jupyter kernelspec list
 
 - 如果运行中断，可重新执行 `bash setup_from_repo.sh`。
 
-联系方式
+---
 
-作者: **winbeau**
+## 联系方式
+
+作者: **winbeau** | 
 邮箱: geneva4869@163.com
 
 ---
