@@ -23,7 +23,7 @@ cd dl-jupyter
 
 ### 2. 运行安装脚本
 ```bash
-bash setup_from_repo.sh
+bash setup-from-repo.sh
 ```
 
 ### 3. 激活环境并启动 Jupyter Lab
