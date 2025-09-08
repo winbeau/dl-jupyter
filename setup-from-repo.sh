@@ -55,6 +55,13 @@ if command -v conda >/dev/null 2>&1; then
 fi
 
 # ---------- Step 2: 更新 conda 并安装 mamba（加速求解） ----------
+echo "[2.1] 配置 conda 镜像源 (清华)"
+conda config --remove-key channels || true
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r/
+conda config --add channels conda-forge
+conda config --set show_channel_urls yes
+
 info "Step 2 — 升级 conda，并尝试安装 mamba（提高依赖求解成功率）"
 conda update -n base -c defaults -y conda || echo "[WARN] conda update failed, continuing"
 # try install mamba (preferred), else fallback install conda-forge micromamba if needed
