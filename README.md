@@ -21,12 +21,17 @@ git clone https://github.com/winbeau/dl-jupyter.git
 cd dl-jupyter
 ```
 
-### 2. 运行安装脚本
+### 2. 运行核心安装脚本
 ```bash
-bash setup-from-repo.sh
+bash setup-core.sh
 ```
 
-### 3. 激活环境并启动 Jupyter Lab
+### 3. 如需安装可选包
+```bash
+bash optional-packages.sh
+```
+
+### 4. 激活环境并启动 Jupyter Lab
 ```bash
 conda activate pyl
 jupyter lab
