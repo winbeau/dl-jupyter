@@ -75,18 +75,10 @@ conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/m
 conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r/
 conda config --add channels conda-forge
 conda config --set show_channel_urls yes
-
-# ================================
-# Step 5: 更新 conda & pip
-# ================================
-echo "[5] 更新 conda & pip..."
-conda update -n base -c defaults conda -y || true
-pip install --upgrade pip || true
-
 # ================================
 # Step 5.1: 配置 pip 清华镜像
 # ================================
-echo "[5.1] 配置 pip 清华镜像..."
+echo "[5] 配置 pip 镜像源 (清华)..."
 mkdir -p ~/.pip
 cat > ~/.pip/pip.conf << EOF
 [global]
@@ -98,9 +90,17 @@ EOF
 echo "    ✓ pip 清华镜像配置完成"
 
 # ================================
-# Step 6: 创建核心环境
+# Step 6: 更新 conda & pip
 # ================================
-echo "[6] 创建核心环境..."
+echo "[6] 更新 conda & pip..."
+conda update -n base -c defaults conda -y || true
+pip install --upgrade pip || true
+
+
+# ================================
+# Step 7: 创建核心环境
+# ================================
+echo "[7] 创建核心环境..."
 if [ -f conda-envs/pyl.core.yml ]; then
     conda env create -f conda-envs/pyl.core.yml || {
         echo "[6-error] 核心环境创建失败，手动创建最小环境"
@@ -113,21 +113,21 @@ else
 fi
 
 # ================================
-# Step 7: 激活环境
+# Step 8: 激活环境
 # ================================
-echo "[7] 激活 pyl 环境..."
+echo "[8] 激活 pyl 环境..."
 eval "$($HOME/miniconda/bin/conda shell.bash hook)"
 conda activate pyl
 
 # ================================
-# Step 8: 检测 GPU 并安装 PyTorch
+# Step 9: 检测 GPU 并安装 PyTorch
 # ================================
-echo "[8] 安装 PyTorch..."
+echo "[9] 安装 PyTorch..."
 
 pytorch_installed=false
 
 if command -v nvidia-smi &> /dev/null; then
-    echo "[8] 检测到 NVIDIA GPU → 安装 CUDA 版 PyTorch"
+    echo "[9] 检测到 NVIDIA GPU → 安装 CUDA 版 PyTorch"
 
     # 首先尝试 conda 安装
     echo "  → 尝试 conda 安装 PyTorch (CUDA)"
@@ -156,7 +156,7 @@ if command -v nvidia-smi &> /dev/null; then
     fi
 
 else
-    echo "[8] 未检测到 NVIDIA GPU → 安装 CPU 版 PyTorch"
+    echo "[9] 未检测到 NVIDIA GPU → 安装 CPU 版 PyTorch"
 
     # 首先尝试 conda 安装
     echo "  → 尝试 conda 安装 PyTorch (CPU)"
@@ -186,15 +186,15 @@ else
 fi
 
 # ================================
-# Step 9: 安装 d2l (Dive into Deep Learning)
+# Step 10: 安装 d2l (Dive into Deep Learning)
 # ================================
-echo "[9] 安装 d2l (Dive into Deep Learning)..."
+echo "[10] 安装 d2l (Dive into Deep Learning)..."
 install_pip_package "d2l" "D2L (Dive into Deep Learning)"
 
 # ================================
-# Step 10: 逐步安装科学计算包
+# Step 11: 逐步安装科学计算包
 # ================================
-echo "[10] 安装科学计算包..."
+echo "[11] 安装科学计算包..."
 
 # 数据处理
 install_conda_package "numpy" "NumPy"
@@ -217,7 +217,7 @@ install_conda_package "tqdm" "TQDM"
 install_conda_package "pillow" "Pillow"
 
 # OpenCV (容易失败，用 pip 安装，带超时检查)
-echo "  → 安装 OpenCV (通过pip，带超时检查)"
+echo "  → 安装 OpenCV (通过pip，60s超时检查)"
 opencv_installed=false
 
 # 设置超时时间为60秒
