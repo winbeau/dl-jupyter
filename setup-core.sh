@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "[0] 开始执行环境恢复脚本 (改进版)"
+echo "[0] 开始执行环境恢复脚本 (dl-setup)"
 
 # ================================
 # 工具函数
@@ -82,7 +82,8 @@ if [ -f conda-envs/pyl.core.yml ]; then
         conda create -n pyl python=3.10 pip jupyter jupyterlab ipykernel -y
     }
 else
-    echo "[6-info] 未找到核心环境文件，创建最小环境"
+    echo "[6-error] 未找到 conda-envs/pyl.core.yml 文件！"
+    echo "创建最小环境..."
     conda create -n pyl python=3.10 pip jupyter jupyterlab ipykernel -y
 fi
 
@@ -106,9 +107,15 @@ else
 fi
 
 # ================================
-# Step 9: 逐步安装科学计算包
+# Step 9: 安装 d2l (Dive into Deep Learning)
 # ================================
-echo "[9] 安装科学计算包..."
+echo "[9] 安装 d2l (Dive into Deep Learning)..."
+install_pip_package "d2l" "D2L (Dive into Deep Learning)"
+
+# ================================
+# Step 10: 逐步安装科学计算包
+# ================================
+echo "[10] 安装科学计算包..."
 
 # 数据处理
 install_conda_package "numpy" "NumPy"
@@ -143,45 +150,15 @@ install_conda_package "nodejs" "Node.js"
 install_conda_package "yarn" "Yarn"
 
 # ================================
-# Step 10: 安装额外的 pip 包
+# Step 11: 注册 Jupyter 内核
 # ================================
-echo "[10] 安装额外的 pip 包..."
-if [ -f conda-envs/pyl.pip-freeze.txt ]; then
-    echo "[10] 从 pip-freeze.txt 安装包..."
-    while IFS= read -r package; do
-        # 跳过空行和注释
-        if [[ -n "$package" && ! "$package" =~ ^#.*$ ]]; then
-            install_pip_package "$package" "$(echo $package | cut -d'=' -f1)"
-        fi
-    done < conda-envs/pyl.pip-freeze.txt
-else
-    echo "[10] 未找到 pip-freeze.txt，跳过"
-fi
-
-# ================================
-# Step 11: 恢复 Jupyter 配置
-# ================================
-echo "[11] 恢复 Jupyter 配置..."
-mkdir -p ~/.jupyter
-if [ -f jupyter/jupyter-config.tgz ]; then
-    tar -xzf jupyter/jupyter-config.tgz -C ~/
-    echo "    ✓ Jupyter 配置已恢复"
-fi
-if [ -f jupyter/jupyterlab-config.tgz ]; then
-    tar -xzf jupyter/jupyterlab-config.tgz -C ~/
-    echo "    ✓ JupyterLab 配置已恢复"
-fi
-
-# ================================
-# Step 12: 注册 Jupyter 内核
-# ================================
-echo "[12] 注册 Jupyter 内核..."
+echo "[11] 注册 Jupyter 内核..."
 python -m ipykernel install --user --name=pyl --display-name "Python (pyl)" || true
 
 # ================================
-# Step 13: 环境验证
+# Step 12: 环境验证
 # ================================
-echo "[13] 验证环境..."
+echo "[12] 验证环境..."
 python -c "
 import sys
 print(f'Python 版本: {sys.version}')
@@ -203,6 +180,12 @@ try:
     print(f'Pandas 版本: {pd.__version__}')
 except ImportError:
     print('Pandas 未安装')
+
+try:
+    import d2l
+    print(f'D2L 版本: {d2l.__version__}')
+except ImportError:
+    print('D2L 未安装')
 " || true
 
 # ================================
@@ -210,16 +193,40 @@ except ImportError:
 # ================================
 echo ""
 echo "[✔] 环境恢复完成！"
+
+# 显示安装失败包汇总
+if [ ${#FAILED_PACKAGES[@]} -eq 0 ]; then
+    echo "🎉 所有包都安装成功！"
+else
+    echo ""
+    echo "⚠️  安装失败的包汇总 (${#FAILED_PACKAGES[@]}个)："
+    echo "----------------------------------------"
+    for package in "${FAILED_PACKAGES[@]}"; do
+        echo "  ❌ $package"
+    done
+    echo "----------------------------------------"
+    echo ""
+    echo "💡 你可以稍后手动安装这些包："
+    echo "   conda activate pyl"
+    for package in "${FAILED_PACKAGES[@]}"; do
+        if [[ "$package" == *"conda:"* ]]; then
+            pkg_name=$(echo "$package" | sed 's/.*conda: \([^)]*\).*/\1/')
+            echo "   conda install $pkg_name"
+        elif [[ "$package" == *"pip:"* ]]; then
+            pkg_name=$(echo "$package" | sed 's/.*pip: \([^)]*\).*/\1/')
+            echo "   pip install $pkg_name"
+        fi
+    done
+fi
+
+echo ""
 echo "已安装的包汇总："
 conda list | head -20
 echo "..."
 echo ""
 echo "现在可以运行："
-echo "    conda activate pyl"
-echo "    jupyter lab"
+echo "    conda activate pyl      # 激活环境"
+echo "    jupyter lab            # 启动 Jupyter Lab"
 echo ""
-echo "如果某些包安装失败，可以后续手动安装："
-echo "    conda activate pyl"
-echo "    conda install package_name"
-echo "    # 或者"
-echo "    pip install package_name"
+echo "高级包安装："
+echo "    bash optional-packages.sh"
