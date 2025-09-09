@@ -16,7 +16,7 @@
 
 ```bash
 git clone https://github.com/winbeau/dl-jupyter.git
-cd dl-setup
+cd dl-jupyter
 ```
 
 ### 2. 运行核心安装
