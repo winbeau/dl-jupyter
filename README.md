@@ -1,4 +1,4 @@
-# 🚀 Deep Learning Setup (dl-setup)
+# 🚀 Deep Learning Jupyter Environment (dl-jupyter)
 
 一个开箱即用的深度学习环境自动化安装脚本，适用于 Ubuntu 系统。
 
