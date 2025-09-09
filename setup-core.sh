@@ -4,6 +4,11 @@ set -e
 echo "[0] 开始执行环境恢复脚本 (dl-setup)"
 
 # ================================
+# 全局变量：失败包记录
+# ================================
+FAILED_PACKAGES=()
+
+# ================================
 # 工具函数
 # ================================
 install_conda_package() {
@@ -12,8 +17,11 @@ install_conda_package() {
     echo "  → 安装 ${description}: ${package}"
     if conda install -n pyl "${package}" -y -q; then
         echo "    ✓ ${description} 安装成功"
+        return 0
     else
         echo "    ✗ ${description} 安装失败，跳过"
+        FAILED_PACKAGES+=("conda: ${description} (${package})")
+        return 1
     fi
 }
 
@@ -23,8 +31,11 @@ install_pip_package() {
     echo "  → 安装 ${description}: ${package}"
     if pip install "${package}" --quiet; then
         echo "    ✓ ${description} 安装成功"
+        return 0
     else
         echo "    ✗ ${description} 安装失败，跳过"
+        FAILED_PACKAGES+=("pip: ${description} (${package})")
+        return 1
     fi
 }
 
@@ -73,6 +84,20 @@ conda update -n base -c defaults conda -y || true
 pip install --upgrade pip || true
 
 # ================================
+# Step 5.1: 配置 pip 清华镜像
+# ================================
+echo "[5.1] 配置 pip 清华镜像..."
+mkdir -p ~/.pip
+cat > ~/.pip/pip.conf << EOF
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple/
+trusted-host = pypi.tuna.tsinghua.edu.cn
+timeout = 30
+retries = 2
+EOF
+echo "    ✓ pip 清华镜像配置完成"
+
+# ================================
 # Step 6: 创建核心环境
 # ================================
 echo "[6] 创建核心环境..."
@@ -98,12 +123,66 @@ conda activate pyl
 # Step 8: 检测 GPU 并安装 PyTorch
 # ================================
 echo "[8] 安装 PyTorch..."
+
+pytorch_installed=false
+
 if command -v nvidia-smi &> /dev/null; then
     echo "[8] 检测到 NVIDIA GPU → 安装 CUDA 版 PyTorch"
-    install_conda_package "pytorch pytorch-cuda=11.8 torchvision torchaudio -c pytorch -c nvidia" "PyTorch (CUDA)"
+
+    # 首先尝试 conda 安装
+    echo "  → 尝试 conda 安装 PyTorch (CUDA)"
+    if conda install -n pyl pytorch pytorch-cuda=11.8 torchvision torchaudio -c pytorch -c nvidia -y -q; then
+        echo "    ✓ PyTorch (CUDA) conda 安装成功"
+        pytorch_installed=true
+    else
+        echo "    ✗ PyTorch (CUDA) conda 安装失败，尝试 pip 安装"
+
+        # conda 失败后尝试 pip 安装 - 先尝试清华源
+        echo "  → 尝试 pip 安装 PyTorch (CUDA) [清华源]"
+        if conda run -n pyl pip install torch torchvision torchaudio --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn --quiet; then
+            echo "    ✓ PyTorch (CUDA) pip 安装成功（清华镜像）"
+            pytorch_installed=true
+        else
+            echo "    ✗ PyTorch (CUDA) 清华源失败，尝试官方源"
+            # 尝试官方源
+            if conda run -n pyl pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --quiet; then
+                echo "    ✓ PyTorch (CUDA) pip 安装成功（官方源）"
+                pytorch_installed=true
+            else
+                echo "    ✗ PyTorch (CUDA) 所有安装方式都失败"
+                FAILED_PACKAGES+=("PyTorch (CUDA)")
+            fi
+        fi
+    fi
+
 else
     echo "[8] 未检测到 NVIDIA GPU → 安装 CPU 版 PyTorch"
-    install_conda_package "pytorch torchvision torchaudio cpuonly -c pytorch" "PyTorch (CPU)"
+
+    # 首先尝试 conda 安装
+    echo "  → 尝试 conda 安装 PyTorch (CPU)"
+    if conda install -n pyl pytorch torchvision torchaudio cpuonly -c pytorch -y -q; then
+        echo "    ✓ PyTorch (CPU) conda 安装成功"
+        pytorch_installed=true
+    else
+        echo "    ✗ PyTorch (CPU) conda 安装失败，尝试 pip 安装"
+
+        # conda 失败后尝试 pip 安装 - 先尝试清华源
+        echo "  → 尝试 pip 安装 PyTorch (CPU) [清华源]"
+        if conda run -n pyl pip install torch torchvision torchaudio --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn --quiet; then
+            echo "    ✓ PyTorch (CPU) pip 安装成功（清华镜像）"
+            pytorch_installed=true
+        else
+            echo "    ✗ PyTorch (CPU) 清华源失败，尝试官方源"
+            # 尝试官方源
+            if conda run -n pyl pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --quiet; then
+                echo "    ✓ PyTorch (CPU) pip 安装成功（官方源）"
+                pytorch_installed=true
+            else
+                echo "    ✗ PyTorch (CPU) 所有安装方式都失败"
+                FAILED_PACKAGES+=("PyTorch (CPU)")
+            fi
+        fi
+    fi
 fi
 
 # ================================
@@ -137,12 +216,24 @@ install_conda_package "ipywidgets" "IPython Widgets"
 install_conda_package "tqdm" "TQDM"
 install_conda_package "pillow" "Pillow"
 
-# OpenCV (容易失败，用 pip 安装)
-echo "  → 安装 OpenCV (通过pip)"
-if pip install opencv-python --quiet; then
-    echo "    ✓ OpenCV 安装成功"
-else
-    echo "    ✗ OpenCV 安装失败，跳过"
+# OpenCV (容易失败，用 pip 安装，带超时检查)
+echo "  → 安装 OpenCV (通过pip，带超时检查)"
+opencv_installed=false
+
+# 设置超时时间为60秒
+timeout 60s bash -c '
+    if conda run -n pyl pip install opencv-python --quiet; then
+        echo "    ✓ OpenCV 安装成功"
+        exit 0
+    else
+        echo "    ✗ OpenCV 安装失败"
+        exit 1
+    fi
+' && opencv_installed=true
+
+if [ "$opencv_installed" = false ]; then
+    echo "    ⚠️ OpenCV 安装超时或失败，跳过"
+    FAILED_PACKAGES+=("pip: OpenCV (opencv-python)")
 fi
 
 # Node.js 相关
@@ -153,13 +244,13 @@ install_conda_package "yarn" "Yarn"
 # Step 11: 注册 Jupyter 内核
 # ================================
 echo "[11] 注册 Jupyter 内核..."
-python -m ipykernel install --user --name=pyl --display-name "Python (pyl)" || true
+conda run -n pyl python -m ipykernel install --user --name=pyl --display-name "Python (pyl)" || true
 
 # ================================
 # Step 12: 环境验证
 # ================================
 echo "[12] 验证环境..."
-python -c "
+conda run -n pyl python -c "
 import sys
 print(f'Python 版本: {sys.version}')
 try:
@@ -186,6 +277,12 @@ try:
     print(f'D2L 版本: {d2l.__version__}')
 except ImportError:
     print('D2L 未安装')
+
+try:
+    import cv2
+    print(f'OpenCV 版本: {cv2.__version__}')
+except ImportError:
+    print('OpenCV 未安装')
 " || true
 
 # ================================
@@ -210,19 +307,34 @@ else
     echo "   conda activate pyl"
     for package in "${FAILED_PACKAGES[@]}"; do
         if [[ "$package" == *"conda:"* ]]; then
-            pkg_name=$(echo "$package" | sed 's/.*conda: \([^)]*\).*/\1/')
+            pkg_name=$(echo "$package" | sed 's/.*(\([^)]*\)).*/\1/')
             echo "   conda install $pkg_name"
         elif [[ "$package" == *"pip:"* ]]; then
-            pkg_name=$(echo "$package" | sed 's/.*pip: \([^)]*\).*/\1/')
+            pkg_name=$(echo "$package" | sed 's/.*(\([^)]*\)).*/\1/')
             echo "   pip install $pkg_name"
+        else
+            echo "   # 手动安装: $package"
         fi
     done
+    echo ""
+    echo "特别提示：如果 OpenCV 安装失败，可以尝试："
+    echo "   conda activate pyl"
+    echo "   pip install opencv-python -i https://pypi.tuna.tsinghua.edu.cn/simple/"
+    echo "   # 或者使用 conda: conda install opencv -c conda-forge"
 fi
 
 echo ""
 echo "已安装的包汇总："
-conda list | head -20
+conda run -n pyl conda list | head -20
 echo "..."
+echo ""
+echo "初始化说明："
+echo "    脚本已自动执行 conda init，重启终端后 conda 命令可用"
+echo "    如果当前终端 conda 命令不可用，请执行: source ~/.bashrc"
+echo ""
+echo "环境控制："
+echo "    conda config --set auto_activate_base false  # 禁用开机自动激活base环境"
+echo "    conda config --set auto_activate_base true   # 启用开机自动激活base环境"
 echo ""
 echo "现在可以运行："
 echo "    conda activate pyl      # 激活环境"
