@@ -14,9 +14,26 @@
 
 ### 1. 克隆项目
 
+#### github 请使用：
+
 ```bash
 git clone https://github.com/winbeau/dl-jupyter.git
 cd dl-jupyter
+```
+
+#### gitee 请使用
+```bash
+git clone https://gitee.com/winbeau/dl-jupyter.git
+cd dl-jupyter
+```
+
+#### * 若首次使用 Ubuntu 请运行以下命令初始化系统
+```bash
+su -i # 切换至管理员
+```
+
+```bash
+bash init_env.sh
 ```
 
 ### 2. 运行核心安装
