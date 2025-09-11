@@ -33,8 +33,7 @@ su -i # 切换至管理员
 ```
 
 切换至管理员后目录也会被切换`(home/<username> -> root/)` <br>
-
-所以需要再执行一遍步骤1
+所以需要再执行一遍上述 `clone` 操作，再执行以下命令
 
 ```bash
 bash init_env.sh
