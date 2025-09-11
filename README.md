@@ -32,9 +32,17 @@ cd dl-jupyter
 su -i # 切换至管理员
 ```
 
+切换至管理员后目录也会被切换(home/&lt;username&gt; -> root/)
+所以需要再执行一遍步骤1
+
 ```bash
 bash init_env.sh
 ```
+> **注意**
+> 环境初始化脚本会重新注册用户
+> 若用户名重复，脚本会卡住 需要 `Ctrl + C` 手动退出，再执行一遍 `bash` 操作即可
+> *删除用户名操作:* `sudo deluser username`
+
 
 ### 2. 运行核心安装
 
