@@ -15,7 +15,7 @@ install_conda_package() {
     local package="$1"
     local description="$2"
     echo "  → 安装 ${description}: ${package}"
-    if conda install -n pyl "${package}" -y -q; then
+    if conda install -n pyl "${package}" -y; then
         echo "    ✓ ${description} 安装成功"
         return 0
     else
@@ -29,7 +29,7 @@ install_pip_package() {
     local package="$1"
     local description="$2"
     echo "  → 安装 ${description}: ${package}"
-    if pip install "${package}" --quiet; then
+    if pip install "${package}"; then
         echo "    ✓ ${description} 安装成功"
         return 0
     else
@@ -131,7 +131,7 @@ if command -v nvidia-smi &> /dev/null; then
 
     # 首先尝试 conda 安装
     echo "  → 尝试 conda 安装 PyTorch (CUDA)"
-    if conda install -n pyl pytorch pytorch-cuda=11.8 torchvision torchaudio -c pytorch -c nvidia -y -q; then
+    if conda install -n pyl pytorch pytorch-cuda=11.8 torchvision torchaudio -c pytorch -c nvidia -v -y ; then
         echo "    ✓ PyTorch (CUDA) conda 安装成功"
         pytorch_installed=true
     else
@@ -139,13 +139,13 @@ if command -v nvidia-smi &> /dev/null; then
 
         # conda 失败后尝试 pip 安装 - 先尝试清华源
         echo "  → 尝试 pip 安装 PyTorch (CUDA) [清华源]"
-        if conda run -n pyl pip install torch torchvision torchaudio --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn --quiet; then
+        if conda run -n pyl pip install torch torchvision torchaudio --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn; then
             echo "    ✓ PyTorch (CUDA) pip 安装成功（清华镜像）"
             pytorch_installed=true
         else
             echo "    ✗ PyTorch (CUDA) 清华源失败，尝试官方源"
             # 尝试官方源
-            if conda run -n pyl pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --quiet; then
+            if conda run -n pyl pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118; then
                 echo "    ✓ PyTorch (CUDA) pip 安装成功（官方源）"
                 pytorch_installed=true
             else
@@ -160,7 +160,7 @@ else
 
     # 首先尝试 conda 安装
     echo "  → 尝试 conda 安装 PyTorch (CPU)"
-    if conda install -n pyl pytorch torchvision torchaudio cpuonly -c pytorch -y -q; then
+    if conda install -n pyl pytorch torchvision torchaudio cpuonly -c pytorch -v -y; then
         echo "    ✓ PyTorch (CPU) conda 安装成功"
         pytorch_installed=true
     else
@@ -168,13 +168,13 @@ else
 
         # conda 失败后尝试 pip 安装 - 先尝试清华源
         echo "  → 尝试 pip 安装 PyTorch (CPU) [清华源]"
-        if conda run -n pyl pip install torch torchvision torchaudio --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn --quiet; then
+        if conda run -n pyl pip install torch torchvision torchaudio --index-url https://pypi.tuna.tsinghua.edu.cn/simple/ --trusted-host pypi.tuna.tsinghua.edu.cn; then
             echo "    ✓ PyTorch (CPU) pip 安装成功（清华镜像）"
             pytorch_installed=true
         else
             echo "    ✗ PyTorch (CPU) 清华源失败，尝试官方源"
             # 尝试官方源
-            if conda run -n pyl pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --quiet; then
+            if conda run -n pyl pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu; then
                 echo "    ✓ PyTorch (CPU) pip 安装成功（官方源）"
                 pytorch_installed=true
             else
@@ -222,7 +222,7 @@ opencv_installed=false
 
 # 设置超时时间为60秒
 timeout 60s bash -c '
-    if conda run -n pyl pip install opencv-python --quiet; then
+    if conda run -n pyl pip install opencv-python ; then
         echo "    ✓ OpenCV 安装成功"
         exit 0
     else
@@ -247,9 +247,35 @@ echo "[11] 注册 Jupyter 内核..."
 conda run -n pyl python -m ipykernel install --user --name=pyl --display-name "Python (pyl)" || true
 
 # ================================
-# Step 12: 环境验证
+# Step 12: 更新 zsh 配置文件
 # ================================
-echo "[12] 验证环境..."
+echo "[12] 更新 zsh 配置文件..."
+# 智能粘贴 防止因命令检查导致的卡慢
+echo -e "autoload -Uz bracketed-paste-magic\nzle -N bracketed-paste bracketed-paste-magic\nzstyle ':bracketed-paste-magic' command 'git clone' 'disable-highlighting'\nDISABLE_UNTRACKED_FILES_DIRTY=true\nzstyle ':completion:*:*:ssh:*' hosts off" >> ~/.zshrc
+# 新增 initconda、jn、jl 命令
+{
+    echo -e "\n# Jupyter Notebook 别名"
+    echo 'alias jn="jupyter notebook --no-browser --port=8888"'
+    echo 'alias jl="jupyter lab --no-browser --port=8888"'
+    echo -e "\n# Conda 初始化函数"
+    echo 'initconda() {'
+    echo '    echo "Initializing conda environment..."'
+    echo '    if [[ -f ~/miniconda/bin/conda ]]; then'
+    echo '        eval "$(~/miniconda/bin/conda shell.zsh hook)"'
+    echo '        echo "Conda environment activated"'
+    echo '        echo "Current env: ${CONDA_DEFAULT_ENV:-none}"'
+    echo '    else'
+    echo '        echo "Error: conda not found at ~/miniconda/bin/conda"'
+    echo '        return 1'
+    echo '    fi'
+    echo '}'
+} >> ~/.zshrc
+source ~/.zshrc
+
+# ================================
+# Step 13: 环境验证
+# ================================
+echo "[13] 验证环境..."
 conda run -n pyl python -c "
 import sys
 print(f'Python 版本: {sys.version}')
@@ -330,15 +356,18 @@ echo "..."
 echo ""
 echo "初始化说明："
 echo "    脚本已自动执行 conda init，重启终端后 conda 命令可用"
-echo "    如果当前终端 conda 命令不可用，请执行: source ~/.bashrc"
+echo "    如果当前终端 conda 命令不可执行，请执行: source ~/.zshrc"
+echo "    简化命令(pyl 环境中): jn 快速打开 Jupyter Notebook"
+echo "    简化命令(pyl 环境中): jl 快速打开 Jupyter Lab"
 echo ""
 echo "环境控制："
 echo "    conda config --set auto_activate_base false  # 禁用开机自动激活base环境"
 echo "    conda config --set auto_activate_base true   # 启用开机自动激活base环境"
 echo ""
-echo "现在可以运行："
-echo "    conda activate pyl      # 激活环境"
-echo "    jupyter lab            # 启动 Jupyter Lab"
+echo "现在可以运行(若报错显示无命令请执行: source ~/.zshrc)："
+echo "    initconda               # 初始化 conda 环境"
+echo "    conda activate pyl      # 激活 pyl 环境"
+echo "    jupyter lab             # 启动 Jupyter Lab"
 echo ""
 echo "高级包安装："
 echo "    bash optional-packages.sh"
