@@ -29,7 +29,7 @@ cd dl-jupyter
 
 #### * 若首次使用 Ubuntu 请运行以下命令初始化系统
 ```bash
-su -i # 切换至管理员
+sudo su root # 切换至管理员
 ```
 
 切换至管理员后目录也会被切换`(home/<username> -> root/)` <br>
