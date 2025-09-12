@@ -270,7 +270,7 @@ echo -e "autoload -Uz bracketed-paste-magic\nzle -N bracketed-paste bracketed-pa
     echo '    fi'
     echo '}'
 } >> ~/.zshrc
-source ~/.zshrc
+# source ~/.zshrc 会多层嵌套 导致脚本运行失败
 
 # ================================
 # Step 13: 环境验证
