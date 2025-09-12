@@ -36,6 +36,7 @@ su -i # 切换至管理员
 所以需要再执行一遍上述 `clone` 操作，再执行以下命令
 
 ```bash
+mv ~/dl-jupyter/init_env.sh ~/init_env.sh && cd ~
 bash init_env.sh
 ```
 
