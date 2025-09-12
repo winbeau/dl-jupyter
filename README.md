@@ -32,7 +32,7 @@ cd dl-jupyter
 sudo su root # 切换至管理员
 ```
 
-切换至管理员后目录也会被切换`(home/<username> -> root/)` <br>
+切换至管理员后目录可能会被切换`(home/<username> -> root/)` <br>
 所以需要再执行一遍上述 `clone` 操作，再执行以下命令
 
 ```bash
@@ -43,7 +43,8 @@ bash init_env.sh
 > **注意**
 > 环境初始化脚本会重新注册用户<br>
 > 若用户名重复，脚本会卡住 需要 `Ctrl + C` 手动退出，再执行一遍 `bash` 操作即可<br>
-> *删除用户名操作:* `sudo deluser username`
+> *删除用户名操作:* `sudo deluser username`<br>
+> zsh 环境复制 带网址的命令可能会卡慢，可以先复制残缺命令避开补全，最后再手动加上
 
 
 ### 2. 运行核心安装
@@ -96,6 +97,7 @@ dl-setup/
 ├── README.md                 # 项目说明文档
 ├── setup-core.sh             # 主安装脚本
 ├── optional-packages.sh      # 可选包安装脚本
+├── init_env.sh               # 可选初始化Ubuntu环境脚本
 └── conda-envs/
     └── pyl.core.yml          # 核心环境配置文件
 ```
@@ -196,7 +198,7 @@ git clone https://github.com/winbeau/dl-jupyter.git && cd dl-setup && bash setup
 **安装完成后:**
 
 ```bash
-conda activate pyl && jupyter lab
+initconda && conda activate pyl && jl
 ```
 
 ---
