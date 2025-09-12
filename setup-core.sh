@@ -1,4 +1,4 @@
-#!/usr/bin/zsh
+#!/usr/bin/env bash
 set -e
 
 echo "[0] 开始执行环境恢复脚本 (dl-setup)"
