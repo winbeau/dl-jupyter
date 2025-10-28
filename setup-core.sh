@@ -255,8 +255,8 @@ echo -e "autoload -Uz bracketed-paste-magic\nzle -N bracketed-paste bracketed-pa
 # 新增 initconda、jn、jl 命令
 {
     echo -e "\n# Jupyter Notebook 别名"
-    echo 'alias jn="jupyter notebook --no-browser --port=8888"'
-    echo 'alias jl="jupyter lab --no-browser --port=8888"'
+    echo 'alias jn="jupyter notebook  --ip=0.0.0.0 --port=8888 --no-browser"'
+    echo 'alias jl="jupyter lab --ip=0.0.0.0 --port=8888 --no-browser"'
     echo -e "\n# Conda 初始化函数"
     echo 'initconda() {'
     echo '    echo "Initializing conda environment..."'
